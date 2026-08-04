@@ -1,6 +1,7 @@
 from flask import Flask, render_template_string, jsonify, request
 from database import inicializar_db, obter_tickers_b3, listar_noticias, buscar_estatisticas, DB_FILE
 from hierarquia import construir_arvore_b3
+from termometro_modulo import calcular_termometro_b3
 from termometro import calcular_termometro_global
 import sqlite3
 from datetime import datetime, timedelta
@@ -92,6 +93,22 @@ HTML_TEMPLATE = """
         </header>
 
         <div id="aba-dashboard">
+
+            <div class="card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #38bdf8; margin-bottom: 25px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0; border: none; padding: 0; color: #38bdf8;">🌡️ Termômetro de Sentimento do Mercado (Ibovespa)</h3>
+                    <span id="termometroStatus" style="font-size: 13px; font-weight: bold; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 4px 10px; border-radius: 6px;">Carregando...</span>
+                </div>
+                <div style="background: #334155; border-radius: 8px; height: 14px; width: 100%; overflow: hidden; position: relative;">
+                    <div id="termometroBarra" style="background: linear-gradient(90deg, #ef4444 0%, #eab308 50%, #22c55e 100%); width: 50%; height: 100%; transition: width 0.5s ease;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+                    <span>🔴 Pessimista (Bearish)</span>
+                    <span id="termometroDetalhes">Total analisado: 0 notícias</span>
+                    <span>🟢 Otimista (Bullish)</span>
+                </div>
+            </div>
+    
             <div class="period-selector">
                 <button onclick="mudarPeriodo('hoje')" class="period-btn" data-period="hoje">☀️ Hoje</button>
                 <button onclick="mudarPeriodo('24h')" class="period-btn active" data-period="24h">⏳ Últimas 24h</button>
@@ -234,7 +251,21 @@ HTML_TEMPLATE = """
             });
         }
 
+        
+        async function carregarTermometro() {
+            try {
+                const res = await fetch('/api/termometro');
+                const data = await res.json();
+                document.getElementById('termometroStatus').innerText = data.status;
+                document.getElementById('termometroBarra').style.width = data.percentual + '%';
+                document.getElementById('termometroDetalhes').innerText = `Total: ${data.total} notícias (🟢 ${data.positivas} | 🔴 ${data.negativas} | 🟡 ${data.neutras})`;
+            } catch(e) {
+                console.error("Erro ao carregar termômetro", e);
+            }
+        }
+    
         window.onload = async () => {
+            carregarTermometro();
             await carregarTickersSelect();
             carregarDados();
         };
