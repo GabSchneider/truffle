@@ -1,11 +1,12 @@
 from flask import Flask, render_template_string, jsonify, request
 from database import inicializar_db, obter_tickers_b3, listar_noticias, buscar_estatisticas, DB_FILE
+from hierarquia import construir_arvore_b3
 import sqlite3
 from datetime import datetime, timedelta
 import random
 
 app = Flask(__name__)
-app.secret_key = "truffle_finder_v32_modular"
+app.secret_key = "truffle_finder_v35_hierarquia"
 inicializar_db()
 
 HTML_TEMPLATE = """
@@ -14,7 +15,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Truffle Finder v3.2 | Terminal Institucional B3</title>
+    <title>Truffle Finder v3.5 | Terminal Institucional B3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -54,25 +55,29 @@ HTML_TEMPLATE = """
         .period-selector { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
         .period-btn { background-color: var(--card-bg); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
         .period-btn.active { background-color: #0284c7; color: white; border-color: #0369a1; }
-        .hitl-box { background: #090d16; border: 1px solid #3b82f6; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .hitl-options { display: flex; gap: 10px; margin-top: 8px; align-items: center; }
-        .divergence-panel { margin-top: 10px; border-left: 3px solid #ef4444; padding-left: 10px; display: none; }
+        
+        /* ESTILOS DA ÁRVORE HIERÁRQUICA */
+        .macro-setor { background: #090d16; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .subsetor-box { margin-left: 20px; margin-top: 10px; border-left: 2px solid #3b82f6; padding-left: 15px; }
+        .ticker-pill { display: inline-block; background: #1e293b; border: 1px solid #334155; padding: 4px 10px; border-radius: 4px; margin: 4px; font-size: 12px; cursor: pointer; }
+        .ticker-pill:hover { background: #0284c7; color: white; }
     </style>
 </head>
 <body>
     <aside>
         <div>
-            <div class="logo">🐷 TRUFFLE FINDER <span style="font-size: 10px; color: #38bdf8; margin-left: auto;">v3.2</span></div>
+            <div class="logo">🐷 TRUFFLE FINDER <span style="font-size: 10px; color: #38bdf8; margin-left: auto;">v3.5</span></div>
             <div class="nav-links">
                 <button onclick="mudarAba('dashboard')" id="nav-dashboard" class="active">📊 Dashboard Executivo</button>
+                <button onclick="mudarAba('hierarquia')" id="nav-hierarquia">🌳 Árvore Setorial (B3)</button>
                 <button onclick="mudarAba('preferencias')" id="nav-preferencias">⭐ Meus Ativos & Setores</button>
                 <button onclick="mudarAba('tendencia')" id="nav-tendencia">📈 Algoritmo Preditivo & EMA</button>
-                <button onclick="mudarAba('hitl')" id="nav-hitl" style="display: block; color: #38bdf8; border-left: 3px solid #38bdf8;">🧪 Teste de Realidade (HITL)</button>
+                <button onclick="mudarAba('hitl')" id="nav-hitl" style="color: #38bdf8; border-left: 3px solid #38bdf8;">🧪 Teste de Realidade (HITL)</button>
             </div>
         </div>
         <div class="user-profile">
             <div style="margin-bottom: 5px; color: #38bdf8; font-weight: bold;">Perfil: 👑 Administrador</div>
-            <div style="font-size: 10px; color: var(--text-secondary);">Ibovespa 100% Sincronizado</div>
+            <div style="font-size: 10px; color: var(--text-secondary);">Ibovespa Completo na Barra</div>
         </div>
     </aside>
 
@@ -120,10 +125,19 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
+        <div id="aba-hierarquia" style="display: none;">
+            <div class="card">
+                <h3>🌳 Painel Hierárquico Oficiais B3 (Macrosetor $\rightarrow$ Subsetor $\rightarrow$ Ticker)</h3>
+                <p style="font-size: 13px; color: var(--text-secondary);">Navegue abaixo pela estrutura oficial da B3. Clique em qualquer ticker para filtrar instantaneamente o dashboard:</p>
+                <div id="arvoreContainer" style="margin-top: 20px;">
+                    <p style="color: var(--text-secondary);">Carregando estrutura hierárquica...</p>
+                </div>
+            </div>
+        </div>
+
         <div id="aba-preferencias" style="display: none;">
             <div class="card">
                 <h3>⭐ Painel Personalizado de Ativos & Setores</h3>
-                <p style="font-size: 13px; color: var(--text-secondary);">Selecione os ativos do Ibovespa que deseja monitorar com prioridade:</p>
                 <div id="preferenciasContainer" style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;"></div>
                 <button class="primary" style="margin-top: 20px;" onclick="alert('Preferências salvas com sucesso!')">💾 Salvar Preferências</button>
             </div>
@@ -147,8 +161,7 @@ HTML_TEMPLATE = """
 
         <div id="aba-hitl" style="display: none;">
             <div class="card">
-                <h3>🧪 Teste de Realidade & Validação Humana (HITL 3.2)</h3>
-                <p style="font-size: 13px; color: var(--text-secondary);">Analise as 5 notícias, verifique os links originais, avalie o sentimento e submeta o lote completo:</p>
+                <h3>🧪 Teste de Realidade & Validação Humana (HITL)</h3>
                 <div id="hitlContainer">
                     <p style="text-align: center; color: var(--text-secondary);">Carregando lote de 5 notícias...</p>
                 </div>
@@ -187,8 +200,40 @@ HTML_TEMPLATE = """
             }
         }
 
+        async function carregarArvoreHierarquica() {
+            const res = await fetch('/api/hierarquia');
+            const arvore = await res.json();
+            const container = document.getElementById('arvoreContainer');
+            if(!container) return;
+            container.innerHTML = '';
+
+            for(let macro in arvore) {
+                let macroDiv = document.createElement('div');
+                macroDiv.className = 'macro-setor';
+                let htmlMacro = `<h4 style="margin:0 0 10px 0; color:#38bdf8;">🏢 Macrosetor: ${macro}</h4>`;
+                
+                for(let subsetor in arvore[macro]) {
+                    htmlMacro += `<div class="subsetor-box">`;
+                    htmlMacro += `<strong style="color:var(--text-primary); font-size:13px;">🔹 Subsetor: ${subsetor}</strong><div style="margin-top:6px;">`;
+                    
+                    arvore[macro][subsetor].forEach(ativo => {
+                        htmlMacro += `<span class="ticker-pill" onclick="filtrarPorTicker('${ativo.ticker}')"><b>${ativo.ticker}</b> (${ativo.nome})</span>`;
+                    });
+                    htmlMacro += `</div></div>`;
+                }
+                macroDiv.innerHTML = htmlMacro;
+                container.appendChild(macroDiv);
+            }
+        }
+
+        function filtrarPorTicker(ticker) {
+            document.getElementById('filtroTicker').value = ticker;
+            mudarAba('dashboard');
+            carregarDados();
+        }
+
         function mudarAba(aba) {
-            ['dashboard', 'preferencias', 'tendencia', 'hitl'].forEach(a => {
+            ['dashboard', 'hierarquia', 'preferencias', 'tendencia', 'hitl'].forEach(a => {
                 const el = document.getElementById(`aba-${a}`);
                 const nav = document.getElementById(`nav-${a}`);
                 if(el) el.style.display = 'none';
@@ -199,11 +244,13 @@ HTML_TEMPLATE = """
 
             const titulos = {
                 'dashboard': 'Dashboard Executivo Ibovespa',
+                'hierarquia': 'Árvore Setorial & Hierarquia B3',
                 'preferencias': 'Painel Personalizado de Ativos',
                 'tendencia': 'Algoritmo Preditivo e Análise de Tese',
-                'hitl': 'Teste de Realidade & Validação Humana (HITL 3.2)'
+                'hitl': 'Teste de Realidade & Validação Humana (HITL)'
             };
             document.getElementById('tituloAba').innerText = titulos[aba];
+            if(aba === 'hierarquia') carregarArvoreHierarquica();
             if(aba === 'hitl') carregarSessaoHitl();
             if(aba === 'tendencia') carregarTendencia(tendenciaPeriodoAtual);
         }
@@ -382,6 +429,10 @@ def index():
 @app.route("/api/tickers")
 def api_tickers():
     return jsonify(obter_tickers_b3())
+
+@app.route("/api/hierarquia")
+def api_hierarquia():
+    return jsonify(construir_arvore_b3())
 
 @app.route("/api/atualizar", methods=["POST"])
 def api_atualizar():
