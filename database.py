@@ -72,7 +72,7 @@ def inicializar_db():
     
     cursor.execute("SELECT COUNT(*) FROM noticias")
     if cursor.fetchone()[0] == 0:
-        gerar_massa_inicial(cursor)
+        gerar_massa_robusta(cursor)
         
     conn.commit()
     conn.close()
@@ -86,22 +86,31 @@ def obter_tickers_b3():
     conn.close()
     return {r["ticker"]: {"nome": r["nome"], "setor": r["setor"], "subsetor": r["subsetor"]} for r in rows}
 
-def gerar_massa_inicial(cursor):
+def gerar_massa_robusta(cursor):
     tickers_dict = obter_tickers_b3()
-    fontes = [("Valor Econômico", "Fato (Confiável)"), ("InfoMoney", "Fato (Confiável)"), ("Broadcast CVM", "Fato (Confiável)"), ("X / Fórum B3", "Gossip (Rumor)")]
+    fontes_fatos = ["Valor Econômico", "InfoMoney", "Broadcast CVM/B3", "Exame Finanças"]
+    fontes_gossip = ["X / Fórum Corporativo", "Reddit / InvestidoresBR", "Blog de Bastidores B3", "Canal M&A"]
+    
+    templates = [
+        ("Fato Relevante: {nome} ({ticker}) reporta resultado trimestral acima das projeções da B3.", "Fato (Confiável)", "Positivo", 0.85),
+        ("Conselho de Administração da {nome} ({ticker}) aprova distribuição de dividendos extraordinários.", "Fato (Confiável)", "Positivo", 0.75),
+        ("Setor de {setor} enfrenta volatilidade regulatória com reflexos diretos em {ticker}.", "Fato (Confiável)", "Negativo", -0.55),
+        ("Boato forte no pregão: {nome} ({ticker}) estuda operação corporativa surpresa.", "Gossip (Rumor)", "Positivo", 0.60),
+        ("Especulação de bastidor aponta movimentações atípicas nos papéis de {ticker}.", "Gossip (Rumor)", "Negativo", -0.65)
+    ]
+    
     agora = datetime.now()
     for ticker, info in tickers_dict.items():
-        for i in range(2):
-            sentimento = random.choice(["Positivo", "Negativo", "Neutro"])
-            score = round(random.uniform(-0.9, 0.9), 2)
-            fonte_info = random.choice(fontes)
-            titulo = f"Nota de Mercado: {info['nome']} ({ticker}) reporta movimentação no subsetor de {info['subsetor']} [{i+1}]"
-            link = "https://valor.globo.com/financas/" if "Fato" in fonte_info[1] else "https://twitter.com/search?q=" + ticker
+        for i in range(3):
+            t = random.choice(templates)
+            titulo = f"{t[0].format(nome=info['nome'], ticker=ticker, setor=info['setor'])} [Ref: {i+1}]"
+            fonte = random.choice(fontes_fatos) if t[1] == "Fato (Confiável)" else random.choice(fontes_gossip)
+            link = "https://valor.globo.com/financas/" if "Fato" in t[1] else "https://twitter.com/search?q=" + ticker
             try:
                 cursor.execute('''
                     INSERT INTO noticias (titulo, fonte, tipo_fonte, data, link, ticker, setor, subsetor, sentimento, score_nlp, criado_em)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-' || ? || ' hour'))
-                ''', (titulo, fonte_info[0], fonte_info[1], agora.strftime("%d/%m %H:%M"), link, ticker, info["setor"], info["subsetor"], sentimento, score, random.randint(1, 48)))
+                ''', (titulo, fonte, t[1], agora.strftime("%d/%m %H:%M"), link, ticker, info["setor"], info["subsetor"], t[2], t[3], random.randint(1, 48)))
             except:
                 pass
 
@@ -126,7 +135,7 @@ def listar_noticias(periodo, filtro_ticker=None):
     if filtro_ticker and filtro_ticker != "TODOS":
         query += f" AND ticker = '{filtro_ticker}'"
         
-    query += " ORDER BY id DESC LIMIT 150"
+    query += " ORDER BY id DESC LIMIT 200"
     cursor.execute(query)
     rows = cursor.fetchall()
     conn.close()
