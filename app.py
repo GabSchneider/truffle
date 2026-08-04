@@ -109,6 +109,26 @@ HTML_TEMPLATE = """
                 </div>
             </div>
     
+            
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                <div class="card" style="margin: 0; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Total Filtrado</div>
+                    <div id="contadorTotal" style="font-size: 24px; font-weight: bold; color: #38bdf8; margin-top: 5px;">0</div>
+                </div>
+                <div class="card" style="margin: 0; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Positivos (IA)</div>
+                    <div id="contadorPositivos" style="font-size: 24px; font-weight: bold; color: #22c55e; margin-top: 5px;">0</div>
+                </div>
+                <div class="card" style="margin: 0; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Negativos (IA)</div>
+                    <div id="contadorNegativos" style="font-size: 24px; font-weight: bold; color: #ef4444; margin-top: 5px;">0</div>
+                </div>
+                <div class="card" style="margin: 0; padding: 15px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Neutros / Rumores</div>
+                    <div id="contadorNeutros" style="font-size: 24px; font-weight: bold; color: #94a3b8; margin-top: 5px;">0</div>
+                </div>
+            </div>
+    
             <div class="period-selector">
                 <button onclick="mudarPeriodo('hoje')" class="period-btn" data-period="hoje">☀️ Hoje</button>
                 <button onclick="mudarPeriodo('24h')" class="period-btn active" data-period="24h">⏳ Últimas 24h</button>
@@ -237,7 +257,23 @@ HTML_TEMPLATE = """
             carregarDados();
         }
 
-        async function carregarDados() {
+        async 
+        async function atualizarContadoresDinamicos() {
+            const ticker = document.getElementById('filtroTicker').value;
+            try {
+                const res = await fetch(`/api/contadores?ticker=${ticker}&periodo=${periodoAtual}`);
+                const data = await res.json();
+                document.getElementById('contadorTotal').innerText = data.total;
+                document.getElementById('contadorPositivos').innerText = data.positivas;
+                document.getElementById('contadorNegativos').innerText = data.negativas;
+                document.getElementById('contadorNeutros').innerText = data.neutras;
+            } catch(e) {
+                console.error("Erro ao carregar contadores dinâmicos", e);
+            }
+        }
+    
+        function carregarDados() {
+            atualizarContadoresDinamicos();
             const ticker = document.getElementById('filtroTicker').value;
             const resNoticias = await fetch(`/api/noticias?periodo=${periodoAtual}&ticker=${ticker}`);
             const noticias = await resNoticias.json();
@@ -299,6 +335,26 @@ def api_estatisticas():
 @app.route("/api/atualizar", methods=["POST"])
 def api_atualizar():
     return jsonify({"status": "sucesso"})
+
+
+@app.route("/api/contadores")
+def api_contadores():
+    ticker = request.args.get("ticker", "TODOS")
+    periodo = request.args.get("periodo", "24h")
+    noticias = listar_noticias(periodo, ticker)
+    
+    total = len(noticias)
+    positivas = sum(1 for n in noticias if n["sentimento"] == "Positivo")
+    negativas = sum(1 for n in noticias if n["sentimento"] == "Negativo")
+    neutras = total - (positivas + negativas)
+    
+    return jsonify({
+        "ticker": ticker,
+        "total": total,
+        "positivas": positivas,
+        "negativas": negativas,
+        "neutras": neutras
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
