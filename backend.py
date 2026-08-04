@@ -1,0 +1,73 @@
+from datetime import datetime, timedelta
+import random
+
+INITIAL_DATABASE = [
+    {
+        "id": "1",
+        "titulo": "Petrobras (PETR3) anuncia nova política de dividendos e surpreende mercado",
+        "fonte": "Valor Econômico",
+        "tipo_fonte": "Confiável",
+        "data": datetime.now() - timedelta(hours=1),
+        "link": "https://valor.globo.com",
+        "ticker": "PETR3",
+        "setor": "Petróleo e Gás",
+        "sentimento": "Positivo",
+        "score_ia": 0.85,
+        "analise_ia": "Impacto fortemente positivo. A previsibilidade de fluxo de caixa anima os investidores institucionais.",
+    },
+    {
+        "id": "2",
+        "titulo": "Produção de minério de ferro da Vale (VALE3) supera expectativas no trimestre",
+        "fonte": "InfoMoney",
+        "tipo_fonte": "Confiável",
+        "data": datetime.now() - timedelta(hours=3),
+        "link": "https://infomoney.com.br",
+        "ticker": "VALE3",
+        "setor": "Materiais Básicos",
+        "sentimento": "Positivo",
+        "score_ia": 0.78,
+        "analise_ia": "Volume de extração em alta com forte demanda asiática sustentando as margens operacionais.",
+    },
+    {
+        "id": "3",
+        "titulo": "Itaú Unibanco (ITUB4) reporta inadimplência estável e alta rentabilidade",
+        "fonte": "Exame",
+        "tipo_fonte": "Confiável",
+        "data": datetime.now() - timedelta(hours=5),
+        "link": "https://exame.com",
+        "ticker": "ITUB4",
+        "setor": "Financeiro",
+        "sentimento": "Positivo",
+        "score_ia": 0.80,
+        "analise_ia": "Sólida gestão de risco mantendo o ROE em patamares elevados frente aos concorrentes.",
+    },
+    {
+        "id": "4",
+        "titulo": "Ambev (ABEV3) enfrenta pressão de custos com inflação de insumos",
+        "fonte": "Broadcast",
+        "tipo_fonte": "Confiável",
+        "data": datetime.now() - timedelta(hours=8),
+        "link": "https://broadcast.estadao.com.br",
+        "ticker": "ABEV3",
+        "setor": "Consumo Não Cíclico",
+        "sentimento": "Negativo",
+        "score_ia": -0.45,
+        "analise_ia": "Margem bruta pode sofrer compressão no curto prazo caso o repasse de preços seja lento.",
+    },
+    {
+        "id": "5",
+        "titulo": "Magazine Luiza (MGLU3) tem reestruturação de dívida avaliada por analistas",
+        "fonte": "Fofocas do Mercado",
+        "tipo_fonte": "Gossip",
+        "data": datetime.now() - timedelta(hours=12),
+        "link": "https://twitter.com",
+        "ticker": "MGLU3",
+        "setor": "Consumo Cíclico",
+        "sentimento": "Neutro",
+        "score_ia": 0.05,
+        "analise_ia": "Rumores sem confirmação oficial nos fatos relevantes. Volatilidade alta impulsionada por redes sociais.",
+    },
+]
+
+def buscar_noticias_reais():
+    return INITIAL_DATABASE
