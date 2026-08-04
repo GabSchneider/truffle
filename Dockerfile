@@ -2,10 +2,10 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir streamlit pandas plotly
+RUN pip install --no-cache-dir flask pandas plotly
 
 COPY . /app
 
-EXPOSE 8501
+EXPOSE 5000
 
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["python3", "app.py"]
