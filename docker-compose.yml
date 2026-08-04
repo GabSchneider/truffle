@@ -1,0 +1,7 @@
+version: '3.8'
+services:
+  truffle-app:
+    build: .
+    ports:
+      - "8002:5000"
+    restart: always

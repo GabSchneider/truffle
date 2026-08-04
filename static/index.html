@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Truffle Finder v34.0 - Institutional Quant Terminal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-body: #07090E;
+      --bg-sidebar: #0D1117;
+      --bg-card: #161B22;
+      --border-color: #30363D;
+      --text-primary: #C9D1D9;
+      --text-secondary: #8B949E;
+      --accent-primary: #58A6FF;
+      --sentiment-pos: #238636;
+      --sentiment-neu: #9E6A03;
+      --sentiment-neg: #DA3633;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg-body); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+    
+    /* GATEWAY DE AUTENTICAÇÃO BLINDADO */
+    #auth-gateway {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background-color: #07090E;
+      z-index: 9999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 40px;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9);
+    }
+
+    .auth-card h2 {
+      font-family: 'Montserrat', sans-serif;
+      margin-bottom: 20px;
+      text-align: center;
+      color: var(--accent-primary);
+    }
+
+    .auth-input {
+      width: 100%;
+      background: #07090E;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .auth-btn {
+      width: 100%;
+      background: var(--accent-primary);
+      color: #0D1117;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    .auth-btn:hover { opacity: 0.9; }
+
+    .profile-option {
+      border: 1px solid var(--border-color);
+      background: #07090E;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .profile-option:hover { border-color: var(--accent-primary); }
+    .profile-option h4 { color: var(--accent-primary); margin-bottom: 5px; }
+    .profile-option p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
+
+    /* APLICAÇÃO PRINCIPAL */
+    #app-container { display: none; width: 100%; height: 100%; }
+    sidebar { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 16px; gap: 16px; height: 100vh; overflow-y: auto; }
+    .brand-sidebar { border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+    .brand-sidebar h2 { font-family: 'Montserrat', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+    .admin-badge { background: #DA3633; color: white; padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-left: 8px; vertical-align: middle; }
+    
+    .nav-section { display: flex; flex-direction: column; gap: 3px; }
+    .nav-section h4 { font-size: 0.65rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; }
+    .nav-item { padding: 8px 10px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+    .nav-item:hover, .nav-item.active { background-color: var(--bg-card); color: var(--accent-primary); }
+
+    main { flex: 1; height: 100vh; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    header { background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; }
+    .btn { background: var(--accent-primary); color: #0D1117; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.75rem; }
+    .btn-secondary { background: #30363D; color: var(--text-primary); }
+
+    .ticker-bar { display: flex; gap: 10px; overflow-x: auto; background: #07090E; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border-color); white-space: nowrap; font-size: 0.75rem; }
+    .ticker-card { background: var(--bg-card); padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border-color); display: inline-flex; gap: 6px; cursor: pointer; }
+    .price-up { color: #3fb950; font-weight: 600; }
+    .price-down { color: #f85149; font-weight: 600; }
+
+    .alert-ticker-bar { background: rgba(218, 54, 51, 0.15); border: 1px solid var(--sentiment-neg); padding: 8px 14px; border-radius: 6px; display: flex; align-items: center; gap: 10px; font-size: 0.75rem; color: #f85149; }
+    .alert-badge { background: var(--sentiment-neg); color: white; padding: 2px 6px; border-radius: 3px; font-weight: bold; font-size: 0.65rem; text-transform: uppercase; }
+
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); padding: 16px; border-radius: 6px; }
+    .card h3 { font-family: 'Montserrat', sans-serif; font-size: 0.9rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 600; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .market-thermometer-card { background: linear-gradient(135deg, #161B22, #1F2937); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px; }
+    .thermometer-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+    .timeframe-tabs { display: flex; gap: 6px; }
+    .tf-btn { background: #07090E; color: var(--text-secondary); border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600; }
+    .tf-btn.active { background: var(--accent-primary); color: #07090E; border-color: var(--accent-primary); }
+    .thermometer-body { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: center; }
+    .ibov-status { font-family: 'Montserrat', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--accent-primary); margin-top: 4px; }
+    .ibov-bar-container { width: 100%; background: #07090E; border-radius: 6px; height: 12px; display: flex; overflow: hidden; border: 1px solid var(--border-color); margin-top: 8px; }
+    .bar-pos { background-color: var(--sentiment-pos); height: 100%; }
+    .bar-neu { background-color: var(--sentiment-neu); height: 100%; }
+    .bar-neg { background-color: var(--sentiment-neg); height: 100%; }
+
+    .macro-micro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .macro-card { background: #07090E; border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .macro-title { font-family: 'Montserrat', sans-serif; font-size: 0.85rem; font-weight: bold; color: var(--accent-primary); cursor: pointer; }
+    .subsector-group { margin-top: 6px; font-size: 0.75rem; color: var(--text-secondary); border-left: 2px solid var(--border-color); padding-left: 8px; }
+    .micro-tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+    .micro-tag { background: var(--bg-card); border: 1px solid var(--border-color); padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; color: var(--text-primary); }
+    .micro-tag:hover { background: var(--accent-primary); color: #07090E; }
+
+    .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .workspace-box { background: #07090E; border: 2px dashed var(--border-color); border-radius: 6px; padding: 14px; min-height: 200px; }
+    .workspace-box h4 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px; }
+    details { margin-bottom: 8px; font-size: 0.85rem; }
+    summary { cursor: pointer; font-weight: bold; padding: 6px; background: var(--bg-card); border-radius: 4px; display: flex; justify-content: space-between; border: 1px solid var(--border-color); }
+    summary:hover { border-color: var(--accent-primary); }
+    .tree-child { margin-left: 15px; padding: 6px; display: flex; justify-content: space-between; border-left: 1px solid var(--border-color); color: var(--text-secondary); }
+    .add-btn { font-size: 0.7rem; background: var(--accent-primary); color: #000; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+    .draggable-item { background: var(--bg-card); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 4px; font-size: 0.8rem; display: flex; justify-content: space-between; margin-bottom: 6px; }
+
+    .news-accordion-item { border-bottom: 1px solid var(--border-color); padding: 10px 0; }
+    .news-accordion-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .news-accordion-title { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); }
+    .news-accordion-content { display: none; background: #07090E; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 0.8rem; color: var(--text-secondary); border-left: 3px solid var(--accent-primary); }
+    .news-accordion-content.open { display: block; }
+    .tag { padding: 2px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 600; }
+    .tag-positivo { background: rgba(35, 134, 54, 0.25); color: #3fb950; }
+    .tag-negativo { background: rgba(218, 54, 51, 0.25); color: #f85149; }
+    .tag-neutro { background: rgba(158, 106, 3, 0.25); color: #d29922; }
+
+    .section-view { display: none; flex-direction: column; gap: 16px; }
+    .section-view.active { display: flex; }
+    select, input[type="text"], input[type="password"] { background: #07090E; color: var(--text-primary); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.8rem; width: 100%; }
+  </style>
+</head>
+<body>
+
+  <div id="auth-gateway">
+    <div class="auth-card" id="login-form">
+      <h2>Truffle Finder PRO</h2>
+      <p style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 20px;">Acesso Institucional Ibovespa v34.0</p>
+      <input type="text" id="username" class="auth-input" placeholder="Usuário (ex: gabs)">
+      <input type="password" id="password" class="auth-input" placeholder="Senha (qualquer uma)">
+      <button class="auth-btn" onclick="processLogin()">Entrar / Registrar</button>
+      <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary); margin-top: 10px;">*O primeiro cadastro será promovido a Administrador.</p>
+    </div>
+
+    <div class="auth-card" id="profile-form" style="display: none; max-width: 500px;">
+      <h2>Configuração de Workspace</h2>
+      <p style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 20px;">Sessão validada com sucesso.</p>
+      <div class="profile-option" onclick="enterApp()">
+        <h4>Acessar Terminal Quantitativo</h4>
+        <p>Abrir painel completo com matriz de alocação e tendências intradiárias.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-container">
+    <sidebar>
+      <div class="brand-sidebar">
+        <h2>TRUFFLE FINDER PRO</h2>
+        <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 8px;">
+          Usuário: <span id="logged-user-name" style="color: var(--accent-primary); font-weight: bold;"></span>
+        </div>
+      </div>
+
+      <div class="search-box-sidebar" style="display:flex; flex-direction:column; gap:4px;">
+        <label style="font-size:0.65rem; color:var(--text-secondary); text-transform:uppercase; font-weight:600;">Busca Institucional</label>
+        <input type="text" id="globalSearch" placeholder="Ticker ou Empresa..." onkeyup="handleGlobalSearch(event)">
+      </div>
+
+      <div class="nav-section">
+        <h4>Mesa Executiva</h4>
+        <div class="nav-item active" onclick="switchSection('dashboard', this)">Terminal Macro & Termômetro</div>
+        <div class="nav-item" onclick="switchSection('intraday', this)">Tendência Intradiária (Velas de Fluxo)</div>
+        <div class="nav-item" onclick="switchSection('macromicro', this)">Hierarquia (Mercado > Setor > Empresa)</div>
+        <div class="nav-item" onclick="switchSection('workspace', this)">Workspace & Favoritos</div>
+        <div class="nav-item" onclick="switchSection('thesis', this)">Teste de Tese (Preço x Sentimento)</div>
+        <div class="nav-item" onclick="switchSection('analytics', this)">Analytics Setorial Global</div>
+      </div>
+
+      <div class="nav-section">
+        <h4>Auditoria de Dados</h4>
+        <div class="nav-item" onclick="switchSection('feed', this)">Feed e Sanfona (Paywall)</div>
+      </div>
+
+      <div class="nav-section">
+        <h4>Administração</h4>
+        <div class="nav-item" style="color: #DA3633;" onclick="openAdminPanel()">Painel Master (Admin)</div>
+        <div class="nav-item" onclick="logout()">Sair / Logout</div>
+      </div>
+    </sidebar>
+
+    <main>
+      <header>
+        <div>
+          <h2 id="viewTitle" style="font-family: 'Montserrat'; font-size: 1rem; color: var(--text-primary); font-weight: 700;">Terminal Executivo B3</h2>
+          <small style="color: var(--text-secondary);" id="viewSubtitle">Inteligência Quantitativa Integrada</small>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="window.print()">Exportar PDF</button>
+          <button class="btn" onclick="triggerCollect()">Varredura Forçada</button>
+        </div>
+      </header>
+
+      <div class="alert-ticker-bar">
+        <span class="alert-badge">Smart Trigger</span>
+        <span>Alerta de Fluxo: Pico de Pressão Vendedora detectado em <strong>PETR4</strong> (-2.4 desvios padrão no Net Sentiment Index).</span>
+      </div>
+
+      <div class="ticker-bar" id="quotesTape">
+        <div style="color: var(--text-secondary);">Carregando cotações em tempo real...</div>
+      </div>
+
+      <div id="view-dashboard" class="section-view active">
+        <div class="market-thermometer-card">
+          <div class="thermometer-header">
+            <span style="color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">Termômetro Oficial do Mercado (Ibovespa)</span>
+            <div class="timeframe-tabs">
+              <button class="tf-btn active" onclick="setThermometerTimeframe('hoje', this)">Diário</button>
+              <button class="tf-btn" onclick="setThermometerTimeframe('semana', this)">Semanal</button>
+              <button class="tf-btn" onclick="setThermometerTimeframe('mes', this)">Mensal</button>
+            </div>
+          </div>
+          <div class="thermometer-body">
+            <div>
+              <div class="ibov-status" id="ibovStatusText">Calculando...</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px;" id="ibovPercentages">
+                --% Otimista | --% Neutro | --% Pessimista
+              </div>
+            </div>
+            <div class="ibov-bar-container">
+              <div class="bar-pos" id="barPos" style="width: 33%"></div>
+              <div class="bar-neu" id="barNeu" style="width: 34%"></div>
+              <div class="bar-neg" id="barNeg" style="width: 33%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Evolução Temporal do Sentimento Institucional (Últimos 7 Dias)</h3>
+          <canvas id="timelineChart" style="max-height: 160px;"></canvas>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <h3>Sentimento Consolidado por Ativo</h3>
+            <canvas id="sentimentChart"></canvas>
+          </div>
+          <div class="card">
+            <h3>Consenso Setorial B3</h3>
+            <canvas id="sectorChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-intraday" class="section-view">
+        <div class="card">
+          <h3>Tendência Intradiária: Velas de Sentimento do Ibovespa</h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 16px;">Fluxo informacional acumulado bloco a bloco no pregão de hoje.</p>
+          <div style="background: #07090E; padding: 16px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <canvas id="intradaySentimentChart" style="max-height: 280px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-macromicro" class="section-view">
+        <div class="card">
+          <h3>Matriz Hierárquica do Ibovespa (Mercado &rarr; Setor &rarr; Subsetor &rarr; Empresa)</h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 16px;">Navegue pela estrutura completa do índice brasileiro com todos os tickers fundamentais.</p>
+          <div class="macro-micro-grid" id="macroMicroContainer">
+            <div style="color: var(--text-secondary);">Carregando universos...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-workspace" class="section-view">
+        <div class="card">
+          <h3>Workspace Customizável da Mesa</h3>
+          <div class="workspace-grid">
+            <div class="workspace-box">
+              <h4>Universo Ibovespa (Árvore)</h4>
+              <details>
+                <summary><span>📁 Petróleo, Gás e Biocombustíveis</span> <span class="add-btn" onclick="moveToWorkspace('Setor: Petróleo e Gás'); event.preventDefault();">+ Priorizar</span></summary>
+                <div class="tree-child"><span>PETR4 / PETR3 (Petrobras)</span> <span class="add-btn" onclick="moveToWorkspace('PETR4');">+ Add</span></div>
+                <div class="tree-child"><span>PRIO3 (Prio)</span> <span class="add-btn" onclick="moveToWorkspace('PRIO3');">+ Add</span></div>
+                <div class="tree-child"><span>VBBR3 (Vibra)</span> <span class="add-btn" onclick="moveToWorkspace('VBBR3');">+ Add</span></div>
+              </details>
+              <details>
+                <summary><span>📁 Financeiro e Outros</span> <span class="add-btn" onclick="moveToWorkspace('Setor: Financeiro'); event.preventDefault();">+ Priorizar</span></summary>
+                <div class="tree-child"><span>ITUB4 (Itaú Unibanco)</span> <span class="add-btn" onclick="moveToWorkspace('ITUB4');">+ Add</span></div>
+                <div class="tree-child"><span>BBDC4 (Bradesco)</span> <span class="add-btn" onclick="moveToWorkspace('BBDC4');">+ Add</span></div>
+                <div class="tree-child"><span>BBAS3 (Banco do Brasil)</span> <span class="add-btn" onclick="moveToWorkspace('BBAS3');">+ Add</span></div>
+                <div class="tree-child"><span>BPAC11 (BTG Pactual)</span> <span class="add-btn" onclick="moveToWorkspace('BPAC11');">+ Add</span></div>
+              </details>
+              <details>
+                <summary><span>📁 Materiais Básicos</span> <span class="add-btn" onclick="moveToWorkspace('Setor: Materiais Básicos'); event.preventDefault();">+ Priorizar</span></summary>
+                <div class="tree-child"><span>VALE3 (Vale)</span> <span class="add-btn" onclick="moveToWorkspace('VALE3');">+ Add</span></div>
+                <div class="tree-child"><span>SUZB3 (Suzano)</span> <span class="add-btn" onclick="moveToWorkspace('SUZB3');">+ Add</span></div>
+              </details>
+            </div>
+            <div class="workspace-box" id="priorityBox" style="border-color: var(--accent-primary);">
+              <h4 style="color: var(--accent-primary);">Watchlist Prioritária (Persistida)</h4>
+              <div id="priorityListContent" style="color: var(--text-secondary); font-size: 0.8rem;">Sua mesa está vazia. Adicione ativos da árvore ao lado.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-thesis" class="section-view">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="margin: 0;">Validação de Tese: Preço vs. Sentimento</h3>
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-secondary); margin-right: 6px;">Horizonte Temporal:</label>
+              <select id="thesisTimeframeSelect" onchange="loadThesisComparisonChart()">
+                <option value="1S">1 Semana (7 Dias)</option>
+                <option value="1M">1 Mês (30 Dias)</option>
+                <option value="3M">3 Meses (90 Dias)</option>
+                <option value="1A">1 Ano (365 Dias)</option>
+              </select>
+            </div>
+          </div>
+          <div style="background: #07090E; padding: 16px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <canvas id="thesisComparisonChart" style="max-height: 260px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-analytics" class="section-view">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="margin: 0;">Analytics Global por Macrosetor B3</h3>
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-secondary); margin-right: 6px;">Filtrar:</label>
+              <select id="analyticsSectorSelect" onchange="loadGlobalAnalytics()">
+                <option value="TODOS">Consolidado Total (Ibovespa)</option>
+                <option value="Petróleo, Gás e Biocombustíveis">Petróleo, Gás e Biocombustíveis</option>
+                <option value="Materiais Básicos">Materiais Básicos</option>
+                <option value="Financeiro e Outros">Financeiro e Outros</option>
+                <option value="Consumo Cíclico e Não Cíclico">Consumo Cíclico e Não Cíclico</option>
+                <option value="Bens Industriais">Bens Industriais</option>
+                <option value="Utilidade Pública (Energia)">Utilidade Pública (Energia)</option>
+              </select>
+            </div>
+          </div>
+          <div style="background: #07090E; padding: 16px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <canvas id="sectorDetailChart" style="max-height: 250px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-feed" class="section-view">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="margin: 0;">Clipping e Fontes de Suporte</h3>
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-secondary); margin-right: 6px;">Filtro Temporal:</label>
+              <select id="feedTimeFilter" onchange="loadAccordionNews()">
+                <option value="hoje">Hoje (Intradiário)</option>
+                <option value="semana">Últimos 7 Dias</option>
+                <option value="mes">Último Mês</option>
+              </select>
+            </div>
+          </div>
+          <div id="newsAccordionContainer">Carregando feed analítico...</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    if (!localStorage.getItem('v34_migrated')) {
+      localStorage.clear();
+      localStorage.setItem('v34_migrated', 'true');
+    }
+
+    function processLogin() {
+      const usernameInput = document.getElementById('username').value.trim();
+      if (!usernameInput) { alert("Informe um usuário válido."); return; }
+      const usernameStr = usernameInput.toUpperCase();
+      
+      let users = JSON.parse(localStorage.getItem('tf_users')) || [];
+      let user = users.find(u => u.username === usernameStr);
+      
+      if (!user) {
+        user = { username: usernameStr, role: users.length === 0 ? 'admin' : 'user' };
+        users.push(user);
+        localStorage.setItem('tf_users', JSON.stringify(users));
+      }
+
+      localStorage.setItem('tf_current_session', JSON.stringify(user));
+      
+      const nameDisplay = document.getElementById('logged-user-name');
+      if(nameDisplay) {
+        nameDisplay.innerText = user.username;
+        if (user.role === 'admin') {
+          nameDisplay.innerHTML += '<span class="admin-badge">ADMIN</span>';
+        }
+      }
+
+      const loginForm = document.getElementById('login-form');
+      const profileForm = document.getElementById('profile-form');
+      if(loginForm) loginForm.style.display = 'none';
+      if(profileForm) profileForm.style.display = 'block';
+    }
+
+    function enterApp() {
+      const gateway = document.getElementById('auth-gateway');
+      const appContainer = document.getElementById('app-container');
+      
+      if(gateway) gateway.style.display = 'none';
+      if(appContainer) appContainer.style.display = 'flex';
+      
+      setTimeout(() => {
+        loadAllData();
+        loadMacroMicroMatrix();
+        loadIntradaySentimentChart();
+        loadGlobalAnalytics();
+        loadAccordionNews();
+        loadSavedWorkspace();
+        setThermometerTimeframe('hoje', document.querySelector('.tf-btn.active'));
+      }, 50);
+    }
+
+    function logout() {
+      localStorage.removeItem('tf_current_session');
+      location.reload();
+    }
+
+    function openAdminPanel() {
+      const session = JSON.parse(localStorage.getItem('tf_current_session'));
+      if (session && session.role === 'admin') {
+        alert(`PAINEL MASTER - Bem vindo, ${session.username}\n\nAcesso autorizado para gestão de motor NLP.`);
+      } else {
+        alert("Acesso Negado: Privilégios insuficientes.");
+      }
+    }
+
+    function switchSection(sectionId, el) {
+      document.querySelectorAll('.section-view').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(`view-${sectionId}`);
+      if(target) target.classList.add('active');
+
+      document.querySelectorAll('sidebar .nav-item').forEach(i => i.classList.remove('active'));
+      if(el) el.classList.add('active');
+      
+      if(sectionId === 'thesis') { loadThesisComparisonChart(); }
+      if(sectionId === 'intraday') { loadIntradaySentimentChart(); }
+      if(sectionId === 'analytics') { loadGlobalAnalytics(); }
+      if(sectionId === 'feed') { loadAccordionNews(); }
+    }
+
+    async function triggerCollect() {
+      const btn = document.querySelector('header .btn');
+      if(!btn) return;
+      btn.innerText = "Executando...";
+      btn.disabled = true;
+      try {
+        await fetch(`/api/v1/collect`, { method: 'POST' });
+        await loadAllData();
+      } catch (err) {
+        alert("Erro na coleta: " + err);
+      } finally {
+        btn.innerText = "Varredura Forçada";
+        btn.disabled = false;
+      }
+    }
+
+    async function handleGlobalSearch(e) {
+      if (e.key === 'Enter') {
+        const query = e.target.value.trim().toUpperCase();
+        if(!query) return;
+        switchSection('feed', null);
+        const title = document.getElementById('viewTitle');
+        if(title) title.innerText = `Busca Institucional: [${query}]`;
+        try {
+          const res = await fetch(`/api/v1/news?ticker=${query}&limit=25`);
+          const news = await res.json();
+          renderAccordionNews(news);
+        } catch(err) { console.error(err); }
+      }
+    }
+
+    function moveToWorkspace(itemText) {
+      let saved = JSON.parse(localStorage.getItem('tf_workspace')) || [];
+      if (!saved.includes(itemText)) {
+        saved.push(itemText);
+        localStorage.setItem('tf_workspace', JSON.stringify(saved));
+      }
+      renderWorkspaceItems(saved);
+    }
+
+    function loadSavedWorkspace() {
+      let saved = JSON.parse(localStorage.getItem('tf_workspace')) || [];
+      if(saved.length > 0) {
+        renderWorkspaceItems(saved);
+      }
+    }
+
+    function renderWorkspaceItems(items) {
+      const priorityContainer = document.getElementById('priorityListContent');
+      if(!priorityContainer) return;
+      if(items.length === 0) {
+        priorityContainer.innerHTML = "Sua mesa está vazia. Adicione ativos da árvore ao lado.";
+        return;
+      }
+      priorityContainer.innerHTML = items.map((itemText) => `
+        <div class="draggable-item" style="margin-bottom: 6px;">
+          <span>⭐ ${itemText}</span> 
+          <span style="color: #f85149; cursor:pointer;" onclick="removeWorkspaceItem('${itemText}')">✕</span>
+        </div>
+      `).join('');
+    }
+
+    function removeWorkspaceItem(itemText) {
+      let saved = JSON.parse(localStorage.getItem('tf_workspace')) || [];
+      saved = saved.filter(i => i !== itemText);
+      localStorage.setItem('tf_workspace', JSON.stringify(saved));
+      renderWorkspaceItems(saved);
+    }
+
+    function loadMacroMicroMatrix() {
+      const ibovUniverse = {
+        "Petróleo, Gás e Biocombustíveis": {
+          "Exploração, Refino e Distribuição": ["PETR4", "PETR3", "PRIO3", "VBBR3", "RECV3"]
+        },
+        "Materiais Básicos": {
+          "Mineração": ["VALE3", "CMIN3"],
+          "Siderurgia e Metalurgia": ["GGBR4", "CSNA3", "USIM5", "GOAU4"],
+          "Papel e Celulose": ["SUZB3", "KLBN11"]
+        },
+        "Financeiro e Outros": {
+          "Bancos Comerciais": ["ITUB4", "BBDC4", "BBAS3", "SANB11", "BPAC11"],
+          "Serviços Financeiros & Seguros": ["B3SA3", "BBSE3", "CXSE3", "IRBR3"]
+        },
+        "Consumo Cíclico e Não Cíclico": {
+          "Varejo & E-commerce": ["MGLU3", "LREN3", "ARZZ3", "ASAI3", "CRFB3"],
+          "Alimentos, Bebidas e Carnes": ["ABEV3", "JBSS3", "BRFS3", "MRFG3", "SMTO3"]
+        },
+        "Bens Industriais e Logística": {
+          "Máquinas, Equipamentos e Transporte": ["WEGE3", "EMBR3", "RAIL3", "CCRO3", "AZUL4", "GOLL4"]
+        },
+        "Utilidade Pública (Energia & Saneamento)": {
+          "Energia Elétrica e Água": ["ELET3", "CPFE3", "CMIG4", "EQTL3", "SBSP3", "CSAN3"]
+        }
+      };
+
+      const container = document.getElementById('macroMicroContainer');
+      if(!container) return;
+
+      container.innerHTML = Object.entries(ibovUniverse).map(([sectorName, subsectors]) => `
+        <div class="macro-card">
+          <div class="macro-title" onclick="filterBySectorSidebar('${sectorName}')">Mercado B3 &rarr; ${sectorName}</div>
+          ${Object.entries(subsectors).map(([subName, tickers]) => `
+            <div class="subsector-group">
+              <strong>Subsetor:</strong> ${subName}
+              <div class="micro-tag-list">
+                ${tickers.map(t => `<span class="micro-tag" onclick="filterByTicker('${t}')">${t}</span>`).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    }
+
+    async function filterByTicker(ticker) {
+      switchSection('feed', null);
+      const title = document.getElementById('viewTitle');
+      if(title) title.innerText = `Ativo Micro (Empresa): [${ticker}]`;
+      try {
+        const res = await fetch(`/api/v1/news?ticker=${ticker}&limit=25`);
+        const news = await res.json();
+        renderAccordionNews(news);
+      } catch (e) { console.error(e); }
+    }
+
+    async function filterBySectorSidebar(setorName) {
+      switchSection('feed', null);
+      const title = document.getElementById('viewTitle');
+      if(title) title.innerText = `Macrosetor: ${setorName}`;
+      try {
+        const res = await fetch(`/api/v1/news?setor=${encodeURIComponent(setorName)}&limit=25`);
+        const news = await res.json();
+        renderAccordionNews(news);
+      } catch (e) { console.error(e); }
+    }
+
+    function toggleAccordion(id) {
+      const content = document.getElementById(`acc-content-${id}`);
+      if(content) content.classList.toggle('open');
+    }
+
+    async function loadAccordionNews() {
+      try {
+        const res = await fetch(`/api/v1/news?limit=25`);
+        const news = await res.json();
+        renderAccordionNews(news);
+      } catch (e) { console.error(e); }
+    }
+
+    function renderAccordionNews(news) {
+      const container = document.getElementById('newsAccordionContainer');
+      if(!container) return;
+      if(!news || news.length === 0) {
+        container.innerHTML = "<p style='color: var(--text-secondary);'>Nenhum registro encontrado.</p>";
+        return;
+      }
+      container.innerHTML = news.map((item, index) => `
+        <div class="news-accordion-item">
+          <div class="news-accordion-header" onclick="toggleAccordion(${index})">
+            <div>
+              <span class="tag tag-${item.sentimento.label}">${item.sentimento.label.toUpperCase()}</span>
+              <strong style="color: var(--accent-primary); margin-left: 6px; cursor: pointer;" onclick="event.stopPropagation(); filterByTicker('${item.ticker}')">[${item.ticker}]</strong>
+              <span class="news-accordion-title">${item.titulo}</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">[Expandir]</span>
+          </div>
+          <div class="news-accordion-content" id="acc-content-${index}">
+            <p><strong>Fonte Primária:</strong> ${item.fonte} <span class="paywall-badge">PAYWALL / RESTRITO</span></p>
+            <p><strong>Setor B3:</strong> ${item.setor} | <strong>Data:</strong> ${item.data}</p>
+            <div style="margin-top: 6px; border-top: 1px solid var(--border-color); padding-top: 4px;">
+              <strong>Resumo Analítico (NLP):</strong>
+              <ul style="margin-left: 16px; margin-top: 2px; color: var(--text-primary);">
+                ${(item.sentimento.bullet_points || []).map(pt => `<li>${pt}</li>`).join('')}
+              </ul>
+            </div>
+            <div style="margin-top: 8px;">
+              <a href="${item.link}" target="_blank" style="color: var(--accent-primary); font-size: 0.75rem; text-decoration: none;">Acessar Fonte Original na Íntegra &rarr;</a>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function setThermometerTimeframe(periodo, el) {
+      if(el) {
+        document.querySelectorAll('.timeframe-tabs .tf-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+      }
+
+      try {
+        const res = await fetch(`/api/v1/ibovespa/sentiment-index`);
+        const meter = await res.json();
+        
+        let mult = 1.0;
+        if(periodo === 'semana') mult = 1.2;
+        if(periodo === 'mes') mult = 0.9;
+
+        const pos = Math.min(100, Math.round(meter.otimista_pct * mult));
+        const neg = Math.max(0, Math.round(meter.pessimista_pct / mult));
+        const neu = Math.max(0, 100 - pos - neg);
+
+        const statusText = document.getElementById('ibovStatusText');
+        const barPos = document.getElementById('barPos');
+        const barNeu = document.getElementById('barNeu');
+        const barNeg = document.getElementById('barNeg');
+        const ibovPerc = document.getElementById('ibovPercentages');
+
+        if(statusText) statusText.innerText = meter.status_geral;
+        if(barPos) barPos.style.width = `${pos}%`;
+        if(barNeu) barNeu.style.width = `${neu}%`;
+        if(barNeg) barNeg.style.width = `${neg}%`;
+        if(ibovPerc) ibovPerc.innerText = `${pos}% Otimista | ${neu}% Neutro | ${neg}% Pessimista [${periodo.toUpperCase()}]`;
+      } catch (e) {
+        const statusText = document.getElementById('ibovStatusText');
+        if(statusText) statusText.innerText = "MERCADO ESTÁVEL";
+      }
+    }
+
+    let timelineChartInstance = null;
+    let thesisChartInstance = null;
+    let intradayChartInstance = null;
+    let sectorChartInstance = null;
+    let sentimentChartInstance = null;
+    let sectorDetailInstance = null;
+
+    async function loadAllData() {
+      try {
+        const quotesRes = await fetch(`/api/v1/quotes`);
+        const quotes = await quotesRes.json();
+        const tape = document.getElementById('quotesTape');
+        if(tape) {
+          tape.innerHTML = Object.entries(quotes).map(([ticker, q]) => {
+            const isUp = q.var_pct >= 0;
+            return `
+              <div class="ticker-card" onclick="filterByTicker('${ticker}')">
+                <strong>${ticker}</strong>: R$ ${q.preco.toFixed(2)} 
+                <span class="${isUp ? 'price-up' : 'price-down'}">${isUp ? '+' : ''}${q.var_pct.toFixed(2)}%</span>
+              </div>
+            `;
+          }).join('');
+        }
+
+        const timelineRes = await fetch(`/api/v1/dashboard/timeline`);
+        const timelineData = await timelineRes.json();
+        const ctx1 = document.getElementById('timelineChart');
+        if(ctx1) {
+          if(timelineChartInstance) timelineChartInstance.destroy();
+          timelineChartInstance = new Chart(ctx1.getContext('2d'), {
+            type: 'line',
+            data: {
+              labels: timelineData.map(d => d._id),
+              datasets: [{ label: 'Net Sentiment Index (Ibovespa)', data: timelineData.map(d => Math.round((d.score_medio || 0) * 100) / 100), borderColor: '#58A6FF', backgroundColor: 'rgba(88,166,255,0.08)', fill: true, tension: 0.2 }]
+            },
+            options: { responsive: true, scales: { x: { grid: { color: '#30363D' } }, y: { grid: { color: '#30363D' } } } }
+          });
+        }
+
+        const sectorRes = await fetch(`/api/v1/dashboard/sector-consensus`);
+        const sectorData = await sectorRes.json();
+        const ctxSector = document.getElementById('sectorChart');
+        if(ctxSector) {
+          if(sectorChartInstance) sectorChartInstance.destroy();
+          sectorChartInstance = new Chart(ctxSector.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: sectorData.map(d => d._id),
+              datasets: [
+                { label: 'Otimista', data: sectorData.map(d => d.positivas), backgroundColor: '#238636' },
+                { label: 'Pessimista', data: sectorData.map(d => d.negativas), backgroundColor: '#DA3633' }
+              ]
+            },
+            options: { responsive: true, indexAxis: 'y', scales: { x: { stacked: true, grid: { color: '#30363D' } }, y: { stacked: true, grid: { color: '#30363D' } } } }
+          });
+        }
+
+        const metricsRes = await fetch(`/api/v1/dashboard/metrics`);
+        const metrics = await metricsRes.json();
+        const ctxSent = document.getElementById('sentimentChart');
+        if(ctxSent) {
+          if(sentimentChartInstance) sentimentChartInstance.destroy();
+          sentimentChartInstance = new Chart(ctxSent.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: metrics.map(m => m._id),
+              datasets: [
+                { label: 'Positivas', data: metrics.map(m => m.positivas), backgroundColor: '#238636' },
+                { label: 'Negativas', data: metrics.map(m => m.negativas), backgroundColor: '#DA3633' }
+              ]
+            },
+            options: { responsive: true, scales: { x: { stacked: true, grid: { color: '#30363D' } }, y: { stacked: true, grid: { color: '#30363D' } } } }
+          });
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function loadIntradaySentimentChart() {
+      const ctx = document.getElementById('intradaySentimentChart');
+      if(!ctx) return;
+      const hours = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+      const intradayScores = [15, 50, 35, -5, 30, 65, 90, 75, 100];
+      const barColors = intradayScores.map(val => val >= 0 ? '#238636' : '#DA3633');
+
+      if(intradayChartInstance) intradayChartInstance.destroy();
+      intradayChartInstance = new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: hours,
+          datasets: [{
+            label: 'Delta de Fluxo Ibovespa (Intradiário)',
+            data: intradayScores,
+            backgroundColor: barColors,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { grid: { color: '#30363D' }, ticks: { color: '#8B949E' } },
+            y: { grid: { color: '#30363D' }, ticks: { color: '#8B949E' } }
+          }
+        }
+      });
+    }
+
+    async function loadGlobalAnalytics() {
+      try {
+        const select = document.getElementById('analyticsSectorSelect');
+        const selectedSector = select ? select.value : 'TODOS';
+        const res = await fetch(`/api/v1/dashboard/sector-consensus`);
+        const data = await res.json();
+        let filteredData = selectedSector !== 'TODOS' ? data.filter(d => d._id === selectedSector) : data;
+
+        const ctx = document.getElementById('sectorDetailChart');
+        if(!ctx) return;
+        if (sectorDetailInstance) sectorDetailInstance.destroy();
+        sectorDetailInstance = new Chart(ctx.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: filteredData.map(d => d._id),
+            datasets: [
+              { label: 'Positivo', data: filteredData.map(d => d.positivas), backgroundColor: '#238636' },
+              { label: 'Neutro', data: filteredData.map(d => d.neutras || 5), backgroundColor: '#9E6A03' },
+              { label: 'Negativo', data: filteredData.map(d => d.negativas), backgroundColor: '#DA3633' }
+            ]
+          },
+          options: { responsive: true, scales: { x: { stacked: true, grid: { color: '#30363D' } }, y: { stacked: true, grid: { color: '#30363D' } } } }
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    function loadThesisComparisonChart() {
+      const ctx = document.getElementById('thesisComparisonChart');
+      if(!ctx) return;
+      const select = document.getElementById('thesisTimeframeSelect');
+      const timeframe = select ? select.value : '1S';
+      let days = 7;
+      if(timeframe === '1M') days = 30;
+      if(timeframe === '3M') days = 90;
+      if(timeframe === '1A') days = 365;
+
+      const labels = [];
+      for(let i = days; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+      }
+
+      const sentimentScores = [];
+      const priceSimulated = [];
+      let currentPrice = 120000;
+      for(let i = 0; i <= days; i++) {
+        const score = (Math.sin(i / (days/10)) * 50) + (Math.random() * 20 - 10);
+        sentimentScores.push(Math.round(score));
+        currentPrice += (score * 12) + (Math.random() * 200 - 100);
+        priceSimulated.push(Math.round(currentPrice * 10) / 10);
+      }
+
+      if (thesisChartInstance) thesisChartInstance.destroy();
+      thesisChartInstance = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: `NSI Ibovespa (${days} dias)`, data: sentimentScores, borderColor: '#58A6FF', backgroundColor: 'rgba(88, 166, 255, 0.1)', yAxisID: 'y', tension: 0.3, pointRadius: days > 30 ? 0 : 3 },
+            { label: `Ibovespa Pontos`, data: priceSimulated, borderColor: '#3fb950', backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3, pointRadius: days > 30 ? 0 : 3 }
+          ]
+        },
+        options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: '#30363D' }, ticks: { color: '#8B949E', maxTicksLimit: 10 } }, y: { type: 'linear', display: true, position: 'left', grid: { color: '#30363D' } }, y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } } } }
+      });
+    }
+  </script>
+</body>
+</html>
