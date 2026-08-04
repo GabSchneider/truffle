@@ -1,7 +1,11 @@
 version: '3.8'
+
 services:
-  truffle-app:
+  truffle-dashboard:
     build: .
-    ports:
-      - "8002:5000"
+    container_name: truffle_streamlit_dashboard
     restart: always
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
