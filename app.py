@@ -1,6 +1,7 @@
 from flask import Flask, render_template_string, jsonify, request
 from database import inicializar_db, obter_tickers_b3, listar_noticias, buscar_estatisticas, DB_FILE
 from hierarquia import construir_arvore_b3
+from termometro import calcular_termometro_global
 import sqlite3
 from datetime import datetime, timedelta
 import random
@@ -270,3 +271,7 @@ def api_atualizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
+@app.route("/api/termometro")
+def api_termometro():
+    return jsonify(calcular_termometro_global())
