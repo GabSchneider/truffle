@@ -1,3 +1,4 @@
+from dashboard_estatisticas import obter_estatisticas_avancadas
 from flask import Flask, render_template_string, jsonify, request
 from database import inicializar_db, obter_tickers_b3, listar_noticias, buscar_estatisticas, DB_FILE
 from hierarquia import construir_arvore_b3
